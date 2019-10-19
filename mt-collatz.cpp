@@ -14,7 +14,7 @@ void *mainThread(void * param);
 
 //Global Variables
 pthread_mutex_t lock;
-int counter;
+long long counter;
 int histogram[1000];
 
 
@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 {
     struct timespec stop, start;
     int sec, nsec;
-    int range = atoi(argv[1]);
+    long long range = atoi(argv[1]);
     int threads = atoi(argv[2]);
 
     //checks for invalid commands
@@ -44,14 +44,13 @@ int main(int argc, char** argv)
 
 
     for(i=0; i<threads; i++) //destroys threads, outputs error code if thread fails to join
-    {
         if(pthread_join(t[i], NULL))
         {
             cout << "ERROR: Unable to join thread: " << i <<  endl;
             return -1;
         }
-        cout<< "Joined thread: " << i << endl;
-    }
+
+
     //stops clock and computes run time
     clock_gettime(CLOCK_REALTIME, &stop);
     if(stop.tv_nsec<start.tv_nsec)
@@ -62,11 +61,11 @@ int main(int argc, char** argv)
     sec=stop.tv_sec-start.tv_sec;
     nsec=stop.tv_nsec-start.tv_nsec;
 
+
     //outputs histogram to screen
     for(i=1; i<=999; i++)
-    {
         cout << "<k=" << i << ">, <" << histogram[i] << "> " << endl;
-    }
+
 
     //outputs run info to error stream
     cerr << range << "," << threads << "," << sec << "." << nsec << endl;
@@ -76,7 +75,7 @@ int main(int argc, char** argv)
 }
 
 
-int collatz(int i)
+int collatz(long long i)
 {
     if(i<1)
     {
@@ -98,8 +97,8 @@ int collatz(int i)
 
 void *mainThread(void * param)
 {
-    int *range = (int*)param;
-    int current, freq;
+    long long current, *range = (long long*)param;
+    int freq;
 
     pthread_mutex_lock(&lock);
     current= counter++;
@@ -107,7 +106,7 @@ void *mainThread(void * param)
     {
         pthread_mutex_unlock(&lock);
 
-        //not critical section of thread
+        //only not critical section of thread
         freq=collatz(current);
         if(freq>999)
             freq=999;
