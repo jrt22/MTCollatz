@@ -1,15 +1,16 @@
-nclude <iostream>
+#include <iostream>
 #include <pthread.h>
 #include <ctime>
 #include <string>
 #include <cstdlib>
-
+#include <stdio.h>
 
 using namespace std;
 
 //Functions
 int collatz(int i);
-void *mainThread(void *param);
+void *mainThread(void * param);
+
 
 //Global Variables
 pthread_mutex_t lock;
@@ -19,7 +20,8 @@ int histogram[1000];
 
 int main(int argc, char** argv)
 {
-    clock_t stop, start=clock();
+    struct timespec stop, start;
+    int sec, nsec;
     int range = atoi(argv[1]);
     int threads = atoi(argv[2]);
 
@@ -32,30 +34,44 @@ int main(int argc, char** argv)
     pthread_t t[threads];
     counter=2;
 
+    //starts timer
+    clock_gettime(CLOCK_REALTIME, &start);
     int i;
-    for(i=0; i<threads; i++) //creates threads, outputs error code if thread fails to create
-    {
-        if(pthread_create(&t[i], NULL, &mainThread, (void *)range))
-        {
-            cout << "ERROR: Unable to create thread: " << i <<  endl;
-            return -1;
-        }
-    }
+
+
+    for(i=0; i<threads; i++) //creates threads
+   	 pthread_create(&t[i], NULL, mainThread, &range);
 
 
     for(i=0; i<threads; i++) //destroys threads, outputs error code if thread fails to join
     {
-        if(pthread_join(&t[i], NULL))
+        if(pthread_join(t[i], NULL))
         {
             cout << "ERROR: Unable to join thread: " << i <<  endl;
             return -1;
         }
         cout<< "Joined thread: " << i << endl;
     }
-    stop = clock();
+    //stops clock and computes run time
+    clock_gettime(CLOCK_REALTIME, &stop);
+    if(stop.tv_nsec<start.tv_nsec)
+    {
+        stop.tv_sec--;
+        stop.tv_nsec+=1E9;
+    }
+    sec=stop.tv_sec-start.tv_sec;
+    nsec=stop.tv_nsec-start.tv_nsec;
 
-    cout << range << "," << threads << "," << stop-start << endl;
+    //outputs histogram to screen
+    for(i=1; i<=999; i++)
+    {
+        cout << "<k=" << i << ">, <" << histogram[i] << "> " << endl;
+    }
 
+    //outputs run info to error stream
+    cerr << range << "," << threads << "," << sec << "." << nsec << endl;
+
+    pthread_mutex_destroy(&lock);
     return 0;
 }
 
@@ -80,14 +96,14 @@ int collatz(int i)
 }
 
 
-void *mainThread(void *param)
+void *mainThread(void * param)
 {
-    int range = (int)param;
+    int *range = (int*)param;
     int current, freq;
 
     pthread_mutex_lock(&lock);
     current= counter++;
-    while(counter<=range)
+    while(counter<=*range)
     {
         pthread_mutex_unlock(&lock);
 
@@ -96,10 +112,11 @@ void *mainThread(void *param)
         if(freq>999)
             freq=999;
 
-        pthread+mutex_lock(&lock);
+        pthread_mutex_lock(&lock);
         histogram[freq]++;
         current=counter++;
     }
     pthread_mutex_unlock(&lock);
-    pthread_exit();
+    pthread_exit(0);
 }
+
